@@ -1,5 +1,6 @@
 import Web3 from "web3";
 import { useState, useEffect } from "react";
+import detectEthereumProvider from "@metamask/detect-provider";
 
 import { loadContract } from "./utils/load-contract";
 import "./App.css";
@@ -8,31 +9,35 @@ function App() {
   const [web3Api, setWeb3Api] = useState({
     web3: null,
     provider: null,
+    contract: null,
   });
   const [account, setAccount] = useState(null);
   useEffect(() => {
     const loadProvider = async () => {
-      let provider = null;
-      if (window.ethereum) {
-        provider = window.ethereum;
-        try {
-          //allow access to metamask
-          await provider.request({ method: "eth_requestAccounts" });
-        } catch (error) {
-          console.log("User denied accounts access");
-        }
-      } else if (window.web3) {
-        provider = window.web3.currentProvider;
-      } else if (!process.env.production) {
-        provider = new Web3.providers.HttpProvider("http://localhost:7545");
+      const provider = await detectEthereumProvider();
+      const contract = await loadContract("Faucet", provider);
+      console.log("cont ", contract);
+      // debugger;
+      if (provider) {
+        setWeb3Api({
+          web3: new Web3(provider),
+          provider,
+          contract,
+        });
+      } else {
+        console.log("please, install Metamask.");
       }
-      setWeb3Api({
-        web3: new Web3(provider),
-        provider,
-      });
     };
-    // loadProvider();
+    loadProvider();
   }, []);
+  useEffect(() => {
+    const loadBalance = async () => {
+      const { contract, web3 } = web3Api;
+      const balance = await web3.eth.getBalance(contract.address);
+      console.log("b ", balance);
+    };
+    web3Api.contract && loadBalance();
+  }, [web3Api]);
   useEffect(() => {
     const getAccount = async () => {
       if (web3Api.provider) {
@@ -64,7 +69,7 @@ function App() {
             )}
           </div>
           <div className="balance-view is-size-2 my-4">
-            Current Balance: <strong>10</strong> ETH
+            OBG Bal: <strong>10</strong> Users
           </div>
           <button className="button is-link mr-2">Donate</button>
           <button className="button is-primary">Withdraw</button>
